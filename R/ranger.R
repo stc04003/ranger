@@ -187,19 +187,19 @@
 ##' @author Marvin N. Wright
 ##' @references
 ##' \itemize{
-##'   \item Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. \doi{10.18637/jss.v077.i01}.
-##'   \item Schmid, M., Wright, M. N. & Ziegler, A. (2016). On the use of Harrell's C for clinical risk prediction via random survival forests. Expert Syst Appl 63:450-459. \doi{10.1016/j.eswa.2016.07.018}. 
-##'   \item Wright, M. N., Dankowski, T. & Ziegler, A. (2017). Unbiased split variable selection for random survival forests using maximally selected rank statistics. Stat Med 36:1272-1284. \doi{10.1002/sim.7212}.
-##'   \item Nembrini, S., Koenig, I. R. & Wright, M. N. (2018). The revival of the Gini Importance? Bioinformatics. \doi{10.1093/bioinformatics/bty373}.
-##'   \item Breiman, L. (2001). Random forests. Mach Learn, 45:5-32. \doi{10.1023/A:1010933404324}. 
-##'   \item Ishwaran, H., Kogalur, U. B., Blackstone, E. H., & Lauer, M. S. (2008). Random survival forests. Ann Appl Stat 2:841-860. \doi{10.1097/JTO.0b013e318233d835}. 
-##'   \item Malley, J. D., Kruppa, J., Dasgupta, A., Malley, K. G., & Ziegler, A. (2012). Probability machines: consistent probability estimation using nonparametric learning machines. Methods Inf Med 51:74-81. \doi{10.3414/ME00-01-0052}.
+##'   \item Wright, M. N. & Ziegler, A. (2017). ranger: A fast implementation of random forests for high dimensional data in C++ and R. J Stat Softw 77:1-17. \url{https://doi.org/10.18637/jss.v077.i01}.
+##'   \item Schmid, M., Wright, M. N. & Ziegler, A. (2016). On the use of Harrell's C for clinical risk prediction via random survival forests. Expert Syst Appl 63:450-459. \url{https://doi.org/10.1016/j.eswa.2016.07.018}. 
+##'   \item Wright, M. N., Dankowski, T. & Ziegler, A. (2017). Unbiased split variable selection for random survival forests using maximally selected rank statistics. Stat Med 36:1272-1284. \url{https://doi.org/10.1002/sim.7212}.
+##'   \item Nembrini, S., Koenig, I. R. & Wright, M. N. (2018). The revival of the Gini Importance? Bioinformatics. \url{https://doi.org/10.1093/bioinformatics/bty373}.
+##'   \item Breiman, L. (2001). Random forests. Mach Learn, 45:5-32. \url{https://doi.org/10.1023/A:1010933404324}. 
+##'   \item Ishwaran, H., Kogalur, U. B., Blackstone, E. H., & Lauer, M. S. (2008). Random survival forests. Ann Appl Stat 2:841-860. \url{https://doi.org/10.1097/JTO.0b013e318233d835}. 
+##'   \item Malley, J. D., Kruppa, J., Dasgupta, A., Malley, K. G., & Ziegler, A. (2012). Probability machines: consistent probability estimation using nonparametric learning machines. Methods Inf Med 51:74-81. \url{https://doi.org/10.3414/ME00-01-0052}.
 ##'   \item Hastie, T., Tibshirani, R., Friedman, J. (2009). The Elements of Statistical Learning. Springer, New York. 2nd edition.
-##'   \item Geurts, P., Ernst, D., Wehenkel, L. (2006). Extremely randomized trees. Mach Learn 63:3-42. \doi{10.1007/s10994-006-6226-1}.
-##'   \item Meinshausen (2006). Quantile Regression Forests. J Mach Learn Res 7:983-999. \url{https://www.jmlr.org/papers/v7/meinshausen06a.html}.  
-##'   \item Sandri, M. & Zuccolotto, P. (2008). A bias correction algorithm for the Gini variable importance measure in classification trees. J Comput Graph Stat, 17:611-628. \doi{10.1198/106186008X344522}.
-##'   \item Coppersmith D., Hong S. J., Hosking J. R. (1999). Partitioning nominal attributes in decision trees. Data Min Knowl Discov 3:197-217. \doi{10.1023/A:1009869804967}.
-##'   \item Deng & Runger (2012). Feature selection via regularized trees. The 2012 International Joint Conference on Neural Networks (IJCNN), Brisbane, Australia. \doi{10.1109/IJCNN.2012.6252640}.
+##'   \item Geurts, P., Ernst, D., Wehenkel, L. (2006). Extremely randomized trees. Mach Learn 63:3-42. \url{https://doi.org/10.1007/s10994-006-6226-1}.
+##'   \item Meinshausen (2006). Quantile Regression Forests. J Mach Learn Res 7:983-999. \url{http://www.jmlr.org/papers/v7/meinshausen06a.html}.  
+##'   \item Sandri, M. & Zuccolotto, P. (2008). A bias correction algorithm for the Gini variable importance measure in classification trees. J Comput Graph Stat, 17:611-628. \url{https://doi.org/10.1198/106186008X344522}.
+##'   \item Coppersmith D., Hong S. J., Hosking J. R. (1999). Partitioning nominal attributes in decision trees. Data Min Knowl Discov 3:197-217. \url{https://doi.org/10.1023/A:1009869804967}.
+##'   \item Deng & Runger (2012). Feature selection via regularized trees. The 2012 International Joint Conference on Neural Networks (IJCNN), Brisbane, Australia. \url{https://doi.org/10.1109/IJCNN.2012.6252640}.
 ##'   }
 ##' @seealso \code{\link{predict.ranger}}
 ##' @useDynLib ranger, .registration = TRUE
@@ -224,8 +224,12 @@ ranger <- function(formula = NULL, data = NULL, num.trees = 500, mtry = NULL,
                    num.threads = NULL, save.memory = FALSE,
                    verbose = TRUE, seed = NULL, 
                    dependent.variable.name = NULL, status.variable.name = NULL, 
-                   classification = NULL, x = NULL, y = NULL, ...) {
-  
+                   classification = NULL, x = NULL, y = NULL,
+                   groupID = NULL, gloSamp = 1, ...) {
+    ## groupID is group id used for global prediction
+    ## gloSamp = 1: drop then resample
+    ## gloSamp = 1: resample then drop
+    
   ## Handle ... arguments
   if (length(list(...)) > 0) {
     warning(paste("Unused arguments:", paste(names(list(...)), collapse = ", ")))
@@ -539,10 +543,10 @@ ranger <- function(formula = NULL, data = NULL, num.trees = 500, mtry = NULL,
     regularization.factor <-  c(0, 0)
     use.regularization.factor <- FALSE
   } else {
-    # Deactivation of parallelization
+    # Deactivation of paralellization
     if (num.threads != 1) {
       num.threads <- 1
-      warning("Parallelization deactivated (regularization used).")
+      warning("Paralellization deactivated (regularization used).")
     }
     use.regularization.factor <- TRUE
   } 
@@ -603,25 +607,28 @@ ranger <- function(formula = NULL, data = NULL, num.trees = 500, mtry = NULL,
       stop("Error: Fewer non-zero case weights than observations to sample.")
     }
   }
-  
-  ## Manual inbag selection
-  if (is.null(inbag)) {
-    inbag <- list(c(0,0))
-    use.inbag <- FALSE
-  } else if (is.list(inbag)) {
-    use.inbag <- TRUE
-    if (use.case.weights) {
-      stop("Error: Combination of case.weights and inbag not supported.")
+
+    ## Group id
+    if (is.null(groupID)) groupID <- rep(1, nrow(x))
+    
+    ## Manual inbag selection
+    if (is.null(inbag)) {
+        inbag <- list(c(0,0))
+        use.inbag <- FALSE
+    } else if (is.list(inbag)) {
+        use.inbag <- TRUE
+        if (use.case.weights) {
+            stop("Error: Combination of case.weights and inbag not supported.")
+        }
+        if (length(sample.fraction) > 1) {
+            stop("Error: Combination of class-wise sampling and inbag not supported.")
+        }
+        if (length(inbag) != num.trees) {
+            stop("Error: Size of inbag list not equal to number of trees.")
+        }
+    } else {
+        stop("Error: Invalid inbag, expects list of vectors of size num.trees.")
     }
-    if (length(sample.fraction) > 1) {
-      stop("Error: Combination of class-wise sampling and inbag not supported.")
-    }
-    if (length(inbag) != num.trees) {
-      stop("Error: Size of inbag list not equal to number of trees.")
-    }
-  } else {
-    stop("Error: Invalid inbag, expects list of vectors of size num.trees.")
-  }
   
   ## Class weights: NULL for no weights (all 1)
   if (is.null(class.weights)) {
@@ -860,12 +867,15 @@ ranger <- function(formula = NULL, data = NULL, num.trees = 500, mtry = NULL,
                       min.node.size, split.select.weights, use.split.select.weights,
                       always.split.variables, use.always.split.variables,
                       prediction.mode, loaded.forest, snp.data,
-                      replace, probability, unordered.factor.variables, use.unordered.factor.variables, 
+                      replace, probability, unordered.factor.variables,
+                      use.unordered.factor.variables, 
                       save.memory, splitrule.num, case.weights, use.case.weights, class.weights, 
-                      predict.all, keep.inbag, sample.fraction, alpha, minprop, holdout, prediction.type, 
+                      predict.all, keep.inbag, sample.fraction, alpha,
+                      minprop, holdout, prediction.type, 
                       num.random.splits, sparse.x, use.sparse.data, order.snps, oob.error, max.depth, 
                       inbag, use.inbag, 
-                      regularization.factor, use.regularization.factor, regularization.usedepth)
+                      regularization.factor, use.regularization.factor,
+                      regularization.usedepth, groupID, gloSamp)
   
   if (length(result) == 0) {
     stop("User interrupt or internal error.")

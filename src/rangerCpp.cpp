@@ -48,20 +48,41 @@ using namespace ranger;
 
 // [[Rcpp::depends(RcppEigen)]]
 // [[Rcpp::export]]
-Rcpp::List rangerCpp(uint treetype, Rcpp::NumericMatrix& input_x, Rcpp::NumericMatrix& input_y,
-    std::vector<std::string> variable_names, uint mtry, uint num_trees, bool verbose, uint seed, uint num_threads,
-    bool write_forest, uint importance_mode_r, uint min_node_size,
-    std::vector<std::vector<double>>& split_select_weights, bool use_split_select_weights,
-    std::vector<std::string>& always_split_variable_names, bool use_always_split_variable_names,
-    bool prediction_mode, Rcpp::List loaded_forest, Rcpp::RawMatrix snp_data,
-    bool sample_with_replacement, bool probability, std::vector<std::string>& unordered_variable_names,
-    bool use_unordered_variable_names, bool save_memory, uint splitrule_r, std::vector<double>& case_weights,
-    bool use_case_weights, std::vector<double>& class_weights, bool predict_all, bool keep_inbag,
-    std::vector<double>& sample_fraction, double alpha, double minprop, bool holdout, uint prediction_type_r,
-    uint num_random_splits, Eigen::SparseMatrix<double>& sparse_x, 
-    bool use_sparse_data, bool order_snps, bool oob_error, uint max_depth, 
-    std::vector<std::vector<size_t>>& inbag, bool use_inbag,
-    std::vector<double>& regularization_factor, bool use_regularization_factor, bool regularization_usedepth) {
+Rcpp::List rangerCpp(uint treetype,
+		     Rcpp::NumericMatrix& input_x,
+		     Rcpp::NumericMatrix& input_y,
+		     std::vector<std::string> variable_names, uint mtry, uint num_trees,
+		     bool verbose,
+		     uint seed,
+		     uint num_threads,
+		     bool write_forest, uint importance_mode_r, uint min_node_size,
+		     std::vector<std::vector<double>>& split_select_weights,
+		     bool use_split_select_weights,
+		     std::vector<std::string>& always_split_variable_names,
+		     bool use_always_split_variable_names,
+		     bool prediction_mode,
+		     Rcpp::List loaded_forest,
+		     Rcpp::RawMatrix snp_data,
+		     bool sample_with_replacement,
+		     bool probability,
+		     std::vector<std::string>& unordered_variable_names,
+		     bool use_unordered_variable_names,
+		     bool save_memory,
+		     uint splitrule_r,
+		     std::vector<double>& case_weights,
+		     bool use_case_weights,
+		     std::vector<double>& class_weights,
+		     bool predict_all,
+		     bool keep_inbag,
+		     std::vector<double>& sample_fraction,
+		     double alpha, double minprop, bool holdout, uint prediction_type_r,
+		     uint num_random_splits, Eigen::SparseMatrix<double>& sparse_x, 
+		     bool use_sparse_data, bool order_snps, bool oob_error, uint max_depth, 
+		     std::vector<std::vector<size_t>>& inbag, bool use_inbag,
+		     std::vector<double>& regularization_factor,
+		     bool use_regularization_factor, bool regularization_usedepth,
+		     std::vector<double>& groupID,
+		     double gloSamp) {
   
   Rcpp::List result;
 
@@ -147,12 +168,14 @@ Rcpp::List rangerCpp(uint treetype, Rcpp::NumericMatrix& input_x, Rcpp::NumericM
     SplitRule splitrule = (SplitRule) splitrule_r;
     PredictionType prediction_type = (PredictionType) prediction_type_r;
 
-    // Init Ranger
+    // Init Ranger // 29 variables
     forest->initR(std::move(data), mtry, num_trees, verbose_out, seed, num_threads,
-        importance_mode, min_node_size, split_select_weights, always_split_variable_names,
-        prediction_mode, sample_with_replacement, unordered_variable_names, save_memory, splitrule, case_weights,
-        inbag, predict_all, keep_inbag, sample_fraction, alpha, minprop, holdout, prediction_type, num_random_splits, 
-        order_snps, max_depth, regularization_factor, regularization_usedepth);
+		  importance_mode, min_node_size, split_select_weights, always_split_variable_names,
+		  prediction_mode, sample_with_replacement, unordered_variable_names, save_memory,
+		  splitrule, case_weights, inbag, predict_all, keep_inbag, sample_fraction,
+		  alpha, minprop, holdout, prediction_type, num_random_splits, 
+		  order_snps, max_depth, regularization_factor, regularization_usedepth,
+		  groupID, gloSamp);
 
     // Load forest object if in prediction mode
     if (prediction_mode) {
@@ -248,6 +271,9 @@ Rcpp::List rangerCpp(uint treetype, Rcpp::NumericMatrix& input_x, Rcpp::NumericM
       forest_object.push_back(forest->getSplitValues(), "split.values");
       forest_object.push_back(forest->getIsOrderedVariable(), "is.ordered");
 
+      forest_object.push_back(forest->getOobSampleIDs(), "OobSampleIDs");
+      forest_object.push_back(forest->getSampleIDs(), "SampleIDs");
+      
       if (snp_data.nrow() > 1 && order_snps) {
         // Exclude permuted SNPs (if any)
         std::vector<std::vector<size_t>> snp_order = forest->getSnpOrder();

@@ -1,7 +1,4 @@
 
-##### Version 0.12.0
-* New CRAN version
-
 ##### Version 0.12.4
 * Bug fixes
 

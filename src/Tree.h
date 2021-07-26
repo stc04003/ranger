@@ -35,13 +35,20 @@ public:
   Tree(const Tree&) = delete;
   Tree& operator=(const Tree&) = delete;
 
-  void init(const Data* data, uint mtry, size_t num_samples, uint seed, std::vector<size_t>* deterministic_varIDs,
-      std::vector<double>* split_select_weights, ImportanceMode importance_mode, uint min_node_size,
-      bool sample_with_replacement, bool memory_saving_splitting, SplitRule splitrule,
-      std::vector<double>* case_weights, std::vector<size_t>* manual_inbag, bool keep_inbag,
-      std::vector<double>* sample_fraction, double alpha, double minprop, bool holdout, uint num_random_splits,
-      uint max_depth, std::vector<double>* regularization_factor, bool regularization_usedepth,
-      std::vector<bool>* split_varIDs_used);
+  // 23 variables
+  void init(const Data* data, uint mtry, size_t num_samples,
+	    uint seed, std::vector<size_t>* deterministic_varIDs,
+	    std::vector<double>* split_select_weights,
+	    ImportanceMode importance_mode, uint min_node_size,
+	    bool sample_with_replacement, bool memory_saving_splitting, SplitRule splitrule,
+	    std::vector<double>* case_weights, std::vector<size_t>* manual_inbag, bool keep_inbag,
+	    std::vector<double>* sample_fraction, double alpha,
+	    double minprop, bool holdout, uint num_random_splits,
+	    uint max_depth, std::vector<double>* regularization_factor,
+	    bool regularization_usedepth,
+	    std::vector<bool>* split_varIDs_used,
+	    std::vector<double>* groupID,
+	    double gloSamp);
 
   virtual void allocateMemory() = 0;
 
@@ -68,6 +75,11 @@ public:
   const std::vector<size_t>& getOobSampleIDs() const {
     return oob_sampleIDs;
   }
+  
+  const std::vector<size_t>& getSampleIDs() const {
+    return sampleIDs;
+  }
+  
   size_t getNumSamplesOob() const {
     return num_samples_oob;
   }
@@ -186,6 +198,9 @@ protected:
   std::vector<size_t> start_pos;
   std::vector<size_t> end_pos;
 
+  std::vector<double>* groupID;
+  double gloSamp;
+    
   // IDs of OOB individuals, sorted
   std::vector<size_t> oob_sampleIDs;
 

@@ -36,12 +36,30 @@ Tree::Tree(std::vector<std::vector<size_t>>& child_nodeIDs, std::vector<size_t>&
         0) {
 }
 
-void Tree::init(const Data* data, uint mtry, size_t num_samples, uint seed, std::vector<size_t>* deterministic_varIDs,
-    std::vector<double>* split_select_weights, ImportanceMode importance_mode, uint min_node_size,
-    bool sample_with_replacement, bool memory_saving_splitting, SplitRule splitrule, std::vector<double>* case_weights,
-    std::vector<size_t>* manual_inbag, bool keep_inbag, std::vector<double>* sample_fraction, double alpha,
-    double minprop, bool holdout, uint num_random_splits, uint max_depth, std::vector<double>* regularization_factor,
-    bool regularization_usedepth, std::vector<bool>* split_varIDs_used) {
+  void Tree::init(const Data* data,
+		  uint mtry,
+		  size_t num_samples,
+		  uint seed,
+		  std::vector<size_t>* deterministic_varIDs,
+		  std::vector<double>* split_select_weights,
+		  ImportanceMode importance_mode,
+		  uint min_node_size,
+		  bool sample_with_replacement,
+		  bool memory_saving_splitting,
+		  SplitRule splitrule,
+		  std::vector<double>* case_weights,
+		  std::vector<size_t>* manual_inbag,
+		  bool keep_inbag,
+		  std::vector<double>* sample_fraction,
+		  double alpha,
+		  double minprop,
+		  bool holdout, uint num_random_splits,
+		  uint max_depth,
+		  std::vector<double>* regularization_factor,
+		  bool regularization_usedepth,
+		  std::vector<bool>* split_varIDs_used,
+		  std::vector<double>* groupID,
+		  double gloSamp) {
 
   this->data = data;
   this->mtry = mtry;
@@ -74,7 +92,9 @@ void Tree::init(const Data* data, uint mtry, size_t num_samples, uint seed, std:
   this->regularization_factor = regularization_factor;
   this->regularization_usedepth = regularization_usedepth;
   this->split_varIDs_used = split_varIDs_used;
-
+  this->groupID = groupID;
+  this->gloSamp = gloSamp;
+  
   // Regularization
   if (regularization_factor->size() > 0) {
     regularization = true;
@@ -88,7 +108,7 @@ void Tree::grow(std::vector<double>* variable_importance) {
   allocateMemory();
 
   this->variable_importance = variable_importance;
-
+  
   // Bootstrap, dependent if weighted or not and with or without replacement
   if (!case_weights->empty()) {
     if (sample_with_replacement) {
@@ -129,7 +149,8 @@ void Tree::grow(std::vector<double>* variable_importance) {
       ++num_open_nodes;
       if (i >= last_left_nodeID) {
         // If new level, increase depth
-        // (left_node saves left-most node in current level, new level reached if that node is splitted)
+        // (left_node saves left-most node in current level,
+	// new level reached if that node is splitted)
         last_left_nodeID = split_varIDs.size() - 2;
         ++depth;
       }
@@ -430,25 +451,153 @@ void Tree::permuteAndPredictOobSamples(size_t permuted_varID, std::vector<size_t
 
 void Tree::bootstrap() {
 
-  // Use fraction (default 63.21%) of the samples
-  size_t num_samples_inbag = (size_t) num_samples * (*sample_fraction)[0];
-
-  // Reserve space, reserve a little more to be save)
-  sampleIDs.reserve(num_samples_inbag);
-  oob_sampleIDs.reserve(num_samples * (exp(-(*sample_fraction)[0]) + 0.1));
-
-  std::uniform_int_distribution<size_t> unif_dist(0, num_samples - 1);
-
-  // Start with all samples OOB
-  inbag_counts.resize(num_samples, 0);
-
-  // Draw num_samples samples with replacement (num_samples_inbag out of n) as inbag and mark as not OOB
-  for (size_t s = 0; s < num_samples_inbag; ++s) {
-    size_t draw = unif_dist(random_number_generator);
-    sampleIDs.push_back(draw);
-    ++inbag_counts[draw];
+  // std::cout << "gloSamp:" << gloSamp;
+  // Give unique group id
+  std::unordered_set<int> seen;
+  std::vector<double> uniGroupID, sampleGroup, sizeGroup;
+  for (size_t s = 0; s < (*groupID).size(); ++s) {
+    if (seen.insert((*groupID)[s]).second) 
+      uniGroupID.push_back((*groupID)[s]);
   }
+  
+  if (uniGroupID.size() <= 1) {
+    // std::uniform_int_distribution<size_t> unif_dist2(0, uniGroupID.size() - 1);
+    for (size_t s = 0; s < uniGroupID.size(); ++s) {
+      // size_t draw = unif_dist2(random_number_generator);
+      // sampleGroup.push_back(draw);
+      sampleGroup.push_back(s);
+    }
+    size_t num_samples = 0;
+    for (size_t s = 0; s < (*groupID).size(); ++s) {
+      for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+  	if ((*groupID)[s] == uniGroupID[sampleGroup[s2]]) num_samples++;
+      }
+    }
+    // Define group size
+    for (size_t s = 0; s < uniGroupID.size(); ++s) {
+      sizeGroup.push_back(0);
+      for (size_t s2 = 0; s2 < (*groupID).size(); ++s2) {
+  	if ((*groupID)[s2] == uniGroupID[s]) sizeGroup[s]++;
+      }
+    }
+    // Use fraction (default 63.21%) of the samples
+    size_t num_samples2 = (*groupID).size(); 
+    size_t num_samples_inbag = (size_t) num_samples2 * (*sample_fraction)[0]; 
+    // Reserve space, reserve a little more to be save)
+    sampleIDs.reserve(num_samples_inbag);
+    oob_sampleIDs.reserve(num_samples2 * (exp(-(*sample_fraction)[0]) + 0.1));
+    inbag_counts.resize(num_samples2, 0);  
+    // Draw num_samples samples with replacement (num_samples_inbag out of n)
+    // as inbag and mark as not OOB
+    for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+      size_t cumID = 0;
+      for (size_t s4 = 0; s4 < uniGroupID[sampleGroup[s2]]; ++s4) 
+  	cumID = cumID + sizeGroup[s4];
+      cumID = cumID - sizeGroup[sampleGroup[s2]];
+      std::uniform_int_distribution<size_t> unif_dist3(0, sizeGroup[sampleGroup[s2]] - 1);
+      for (size_t s3 = 0; s3 < sizeGroup[sampleGroup[s2]]; ++s3) {
+  	size_t draw = unif_dist3(random_number_generator);
+  	sampleIDs.push_back(cumID + draw);
+  	++inbag_counts[cumID + draw];
+      }
+    }
+  }
+  if (uniGroupID.size() > 1) {
+    for (size_t s = 0; s < uniGroupID.size(); ++s) {
+      // sampleGroup.push_back(uniGroupID[s]);
+      sampleGroup.push_back(s);
+      sizeGroup.push_back(0);
+      for (size_t s2 = 0; s2 < (*groupID).size(); ++s2) {
+	if ((*groupID)[s2] == uniGroupID[s]) sizeGroup[s]++;
+      }
+    }
+    // Use fraction (default 63.21%) of the samples
+    size_t num_samples2 = sampleGroup.size(); 
+    size_t num_samples_inbag = (size_t) num_samples2 * (*sample_fraction)[0]; 
+    // Reserve space, reserve a little more to be save)
+    sampleIDs.reserve(num_samples_inbag);
+    oob_sampleIDs.reserve(num_samples2 * (exp(-(*sample_fraction)[0]) + 0.1));
+    // std::uniform_int_distribution<size_t> unif_dist(0, num_samples - 1);  
+    // Start with all samples OOB
+    inbag_counts.resize((*groupID).size(), 0);
+    if (gloSamp <= 1) {
+      for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+	size_t cumID = 0;
+	for (size_t s4 = 0; s4 < uniGroupID[sampleGroup[s2]]; ++s4) 
+	  cumID = cumID + sizeGroup[s4];
+	cumID = cumID - sizeGroup[sampleGroup[s2]];
+	std::uniform_int_distribution<size_t> unif_dist3(0, sizeGroup[sampleGroup[s2]] - 1);
+	size_t draw = unif_dist3(random_number_generator);
+	sampleIDs.push_back(cumID + draw);
+	++inbag_counts[cumID + draw];    
+      }
+    }
+    if (gloSamp > 1) {
+      double maxGroupSize = 0;
+      for (size_t s = 0; s < sizeGroup.size(); ++s) {
+	if (sizeGroup[s] > maxGroupSize) maxGroupSize = sizeGroup[s];
+      }
+      for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+	size_t cumID = 0;
+	for (size_t s4 = 0; s4 < uniGroupID[sampleGroup[s2]]; ++s4) 
+	  cumID = cumID + sizeGroup[s4];
+	cumID = cumID - sizeGroup[sampleGroup[s2]];
+	std::uniform_int_distribution<size_t> unif_dist3(0, maxGroupSize - 1);
+	size_t draw = unif_dist3(random_number_generator);
+	if (draw < sizeGroup[sampleGroup[s2]]) {
+	  sampleIDs.push_back(cumID + draw);
+	  ++inbag_counts[cumID + draw];    
+	}
+      }      
+    }
+  }
+  
+  // std::cout << "sizeGroup:";
+  // for (size_t s = 0; s < sizeGroup.size(); ++s) {
+  //   std::cout << sizeGroup[s] << ",";
+  // }
+  // std::cout << "\n";
 
+  // std::cout << "sampled uniGroupID:";
+  // for (size_t s = 0; s < sampleGroup.size(); ++s) {
+  //   std::cout << uniGroupID[sampleGroup[s]] << ",";
+  // }
+  // std::cout << "\n";
+
+  // std::cout << "uniGroupID:";
+  // for (size_t s = 0; s < sampleGroup.size(); ++s) {
+  //   std::cout << uniGroupID[s] << ",";
+  // }
+  // std::cout << "\n";
+
+  // std::shuffle(uniGroupID.begin(), uniGroupID.end(), random_number_generator);
+
+  // std::cout << "uniGroupID2:";
+  // for (size_t s = 0; s < sampleGroup.size(); ++s) {
+  //   std::cout << uniGroupID[s] << ",";
+  // }
+  // std::cout << "\n";
+
+
+  // std::cout << "sampleGroup:";
+  // for (size_t s = 0; s < sampleGroup.size(); ++s) {
+  //   std::cout << sampleGroup[s] << ",";
+  // }
+  // std::cout << "\n";
+  // std::cout << "num_samples" << num_samples << "\n";
+   
+  // std::cout << "inbag_counts:";
+  // for (size_t s = 0; s < inbag_counts.size(); ++s) {
+  //   std::cout << inbag_counts[s] << ",";
+  // }
+  // std::cout << "end inbag\n";
+
+  // std::cout << "sampleIDs:";
+  // for (size_t s = 0; s < sampleIDs.size(); ++s) {
+  //   std::cout << sampleIDs[s] << ",";
+  // }
+  // std::cout << "end sampleIDs\n";
+  
   // Save OOB samples
   for (size_t s = 0; s < inbag_counts.size(); ++s) {
     if (inbag_counts[s] == 0) {
@@ -457,10 +606,14 @@ void Tree::bootstrap() {
   }
   num_samples_oob = oob_sampleIDs.size();
 
+  // std::cout << "inbag_counts.size(): " << inbag_counts.size() << "\n";
+  // std::cout << "num_samples_oob: " << num_samples_oob << "\n";
+  
   if (!keep_inbag) {
     inbag_counts.clear();
     inbag_counts.shrink_to_fit();
   }
+
 }
 
 void Tree::bootstrapWeighted() {
@@ -506,22 +659,143 @@ void Tree::bootstrapWeighted() {
   }
 }
 
-void Tree::bootstrapWithoutReplacement() {
-
-  // Use fraction (default 63.21%) of the samples
-  size_t num_samples_inbag = (size_t) num_samples * (*sample_fraction)[0];
-  shuffleAndSplit(sampleIDs, oob_sampleIDs, num_samples, num_samples_inbag, random_number_generator);
-  num_samples_oob = oob_sampleIDs.size();
-
-  if (keep_inbag) {
-    // All observation are 0 or 1 times inbag
-    inbag_counts.resize(num_samples, 1);
-    for (size_t i = 0; i < oob_sampleIDs.size(); i++) {
-      inbag_counts[oob_sampleIDs[i]] = 0;
+  void Tree::bootstrapWithoutReplacement() {
+    // Use fraction (default 63.21%) of the samples
+    size_t num_samples_inbag = (size_t) num_samples * (*sample_fraction)[0];
+    shuffleAndSplit(sampleIDs, oob_sampleIDs, num_samples, num_samples_inbag,
+        random_number_generator);
+    num_samples_oob = oob_sampleIDs.size();
+    if (keep_inbag) {
+      // All observation are 0 or 1 times inbag
+      inbag_counts.resize(num_samples, 1);
+      for (size_t i = 0; i < oob_sampleIDs.size(); i++) {
+        inbag_counts[oob_sampleIDs[i]] = 0;
+      }
     }
-  }
-}
 
+    // std::cout << "sampleIDs:";
+    // for (size_t s = 0; s < sampleIDs.size(); ++s) {
+    //   std::cout << sampleIDs[s] << ",";
+    // }
+    // std::cout << "end sampleIDs\n";
+
+  }
+
+  // void Tree::bootstrapWithoutReplacement() {
+  //   std::unordered_set<int> seen;
+  //   std::vector<double> uniGroupID, sampleGroup, sizeGroup, tmp;
+  //   for (size_t s = 0; s < (*groupID).size(); ++s) {
+  //     if (seen.insert((*groupID)[s]).second) 
+  // 	uniGroupID.push_back((*groupID)[s]);
+  //   }  
+  //   if (uniGroupID.size() <= 1) {
+  //     // std::uniform_int_distribution<size_t> unif_dist2(0, uniGroupID.size() - 1);
+  //     for (size_t s = 0; s < uniGroupID.size(); ++s) {
+  // 	// size_t draw = unif_dist2(random_number_generator);
+  // 	// sampleGroup.push_back(draw);
+  // 	sampleGroup.push_back(s);
+  //     }
+  //     size_t num_samples = 0;
+  //     for (size_t s = 0; s < (*groupID).size(); ++s) {
+  // 	for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+  // 	  if ((*groupID)[s] == uniGroupID[sampleGroup[s2]]) num_samples++;
+  // 	}
+  //     }
+  //     // Define group size
+  //     for (size_t s = 0; s < uniGroupID.size(); ++s) {
+  // 	sizeGroup.push_back(0);
+  // 	for (size_t s2 = 0; s2 < (*groupID).size(); ++s2) {
+  // 	  if ((*groupID)[s2] == uniGroupID[s]) sizeGroup[s]++;
+  // 	}
+  //     }
+  //     // Use fraction (default 63.21%) of the samples
+  //     size_t num_samples2 = (*groupID).size(); 
+  //     size_t num_samples_inbag = (size_t) num_samples2 * (*sample_fraction)[0];
+  //     // Reserve space, reserve a little more to be save)
+  //     sampleIDs.reserve(num_samples_inbag);
+  //     oob_sampleIDs.reserve(num_samples2 * (exp(-(*sample_fraction)[0]) + 0.1));
+  //     inbag_counts.resize(num_samples2, 0);  
+  //     // Draw num_samples samples with replacement (num_samples_inbag out of n)
+  //     // as inbag and mark as not OOB
+  //     for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+  // 	size_t cumID = 0;
+  // 	for (size_t s4 = 0; s4 < uniGroupID[sampleGroup[s2]]; ++s4) 
+  // 	  cumID = cumID + sizeGroup[s4];
+  // 	cumID = cumID - sizeGroup[sampleGroup[s2]];
+  // 	for (size_t s3 = 0; s3 < sizeGroup[sampleGroup[s2]]; ++s3) {
+  // 	  tmp.push_back(s3);
+  // 	}
+  // 	std::shuffle(tmp.begin(), tmp.end(), random_number_generator);	
+  // 	for (size_t s3 = 0; s3 < num_samples_inbag; ++s3) {
+  // 	  size_t draw = tmp[s3];
+  // 	  sampleIDs.push_back(cumID + draw);
+  // 	  ++inbag_counts[cumID + draw];
+  // 	}
+  //     }
+  //   }
+  //   if (uniGroupID.size() > 1) {
+  //     for (size_t s = 0; s < uniGroupID.size(); ++s) {
+  // 	// sampleGroup.push_back(uniGroupID[s]);
+  // 	sampleGroup.push_back(s);
+  // 	sizeGroup.push_back(0);
+  // 	for (size_t s2 = 0; s2 < (*groupID).size(); ++s2) {
+  // 	  if ((*groupID)[s2] == uniGroupID[s]) sizeGroup[s]++;
+  // 	}
+  //     }
+  //     // Use fraction (default 63.21%) of the samples
+  //     size_t num_samples2 = sampleGroup.size(); 
+  //     size_t num_samples_inbag = (size_t) num_samples2 * (*sample_fraction)[0]; 
+  //     // Reserve space, reserve a little more to be save)
+  //     sampleIDs.reserve(num_samples_inbag);
+  //     oob_sampleIDs.reserve(num_samples2 * (exp(-(*sample_fraction)[0]) + 0.1));
+  //     // std::uniform_int_distribution<size_t> unif_dist(0, num_samples - 1);  
+  //     // Start with all samples OOB
+  //     inbag_counts.resize((*groupID).size(), 0);
+  //     if (gloSamp <= 1) {
+  // 	for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+  // 	  size_t cumID = 0;
+  // 	  for (size_t s4 = 0; s4 < uniGroupID[sampleGroup[s2]]; ++s4) 
+  // 	    cumID = cumID + sizeGroup[s4];
+  // 	  cumID = cumID - sizeGroup[sampleGroup[s2]];
+  // 	  std::uniform_int_distribution<size_t> unif_dist3(0, sizeGroup[sampleGroup[s2]] - 1);
+  // 	  size_t draw = unif_dist3(random_number_generator);
+  // 	  sampleIDs.push_back(cumID + draw);
+  // 	  ++inbag_counts[cumID + draw];    
+  // 	}
+  //     }
+  //     if (gloSamp > 1) {
+  // 	double maxGroupSize = 0;
+  // 	for (size_t s = 0; s < sizeGroup.size(); ++s) {
+  // 	  if (sizeGroup[s] > maxGroupSize) maxGroupSize = sizeGroup[s];
+  // 	}
+  // 	for (size_t s2 = 0; s2 < sampleGroup.size(); ++s2) {
+  // 	  size_t cumID = 0;
+  // 	  for (size_t s4 = 0; s4 < uniGroupID[sampleGroup[s2]]; ++s4) 
+  // 	    cumID = cumID + sizeGroup[s4];
+  // 	  cumID = cumID - sizeGroup[sampleGroup[s2]];
+  // 	  std::uniform_int_distribution<size_t> unif_dist3(0, maxGroupSize - 1);
+  // 	  size_t draw = unif_dist3(random_number_generator);
+  // 	  if (draw < sizeGroup[sampleGroup[s2]]) {
+  // 	    sampleIDs.push_back(cumID + draw);
+  // 	    ++inbag_counts[cumID + draw];    
+  // 	  }
+  // 	}      
+  //     }
+  //   }
+  //   for (size_t s = 0; s < inbag_counts.size(); ++s) {
+  //     if (inbag_counts[s] == 0) {
+  // 	oob_sampleIDs.push_back(s);
+  //     }
+  //   }
+  //   num_samples_oob = oob_sampleIDs.size();
+  //   // std::cout << "inbag_counts.size(): " << inbag_counts.size() << "\n";
+  //   // std::cout << "num_samples_oob: " << num_samples_oob << "\n";  
+  //   if (!keep_inbag) {
+  //     inbag_counts.clear();
+  //     inbag_counts.shrink_to_fit();
+  //   }
+  // }
+  
 void Tree::bootstrapWithoutReplacementWeighted() {
 
   // Use fraction (default 63.21%) of the samples
